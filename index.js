@@ -36,6 +36,8 @@ module.exports = function (params) {
             return cb();
         }
 
+        var self = this;
+
         childProcess.execFile(binPath, childArgs, function (err, stdout, stderr) {
             var passed = true,
                 out,
@@ -47,7 +49,16 @@ module.exports = function (params) {
 
             if (stdout) {
                 try {
-                    stdout.trim().split('\n').forEach(function (line) {
+                    var outString = stdout.trim();
+                    var report = '*JUNITREPORT*';
+                    var reportClose = '*JUNITREPORT/*';
+                    var jUnit = outString.indexOf(report);
+                    var jUnitClose = outString.indexOf(reportClose);
+                    if (jUnit !== -1) {
+                        self.emit('jUnit-report', outString.slice(jUnit + report.length, jUnitClose).trim(), file);
+                    }
+                    outString = outString.slice(jUnitClose + reportClose.length);
+                    outString.trim().split('\n').forEach(function (line) {
                         if (line.indexOf('{') !== -1) {
                             out = JSON.parse(line.trim());
                             result = out.result;
