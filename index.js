@@ -38,7 +38,7 @@ module.exports = function (params) {
 
         var self = this;
 
-        childProcess.execFile(binPath, childArgs, function (err, stdout, stderr) {
+        childProcess.execFile(binPath, childArgs, function(err, stdout, stderr) {
             var passed = true,
                 out,
                 result,
@@ -49,32 +49,22 @@ module.exports = function (params) {
 
             if (stdout) {
                 try {
-                    var outString = stdout.trim();
-                    var report = '*JUNITREPORT*';
-                    var reportClose = '*JUNITREPORT/*';
-                    var jUnit = outString.indexOf(report);
-                    var jUnitClose = outString.indexOf(reportClose);
-                    if (jUnit !== -1) {
-                        self.emit('jUnit-report', outString.slice(jUnit + report.length, jUnitClose).trim(), file);
-                    }
-                    outString = outString.slice(jUnitClose + reportClose.length);
-                    outString.trim().split('\n').forEach(function (line) {
+                    stdout.trim().split('\n').forEach(function(line) {
                         if (line.indexOf('{') !== -1) {
                             out = JSON.parse(line.trim());
-                            result = out.result;
+                            self.emit('qunit-report', out, file);
 
-                            color = result.failed > 0 ? chalk.red : chalk.green;
+                            result = out.stats;
 
-                            gutil.log('Took ' + result.runtime + ' ms to run ' + chalk.blue(result.total) + ' tests. ' + color(result.passed + ' passed, ' + result.failed + ' failed.'));
+                            color = result.failures > 0 ? chalk.red : chalk.green;
 
-                            if (out.exceptions) {
-                                for (test in out.exceptions) {
-                                    gutil.log('\n' + chalk.red('Test failed') + ': ' + chalk.red(test) + ': \n' + out.exceptions[test].join('\n  '));
-                                }
+                            gutil.log('Took ' + result.duration + ' ms to run ' + chalk.blue(result.tests) + ' tests. ' + color(result.passes + ' passed, ' + result.failures + ' failed.'));
+
+                            if (out.failures) {
+                                out.failures.forEach(function(item) {
+                                    gutil.log(chalk.red('Test failed') + ': ' + chalk.red(item.fullTitle) + ': \n' + item.error);
+                                });
                             }
-                        } else {
-                            line = line.trim(); // Trim trailing cr-lf
-                            gutil.log(line);
                         }
                     });
                 } catch (e) {
